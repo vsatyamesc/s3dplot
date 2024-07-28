@@ -99,7 +99,7 @@ class WorkShape():
         self.faces = []
         self.edges = []
   
-    def cuboid(self,X=0,Y=0,Z=0, Size=[1.0]) -> None: # To Do: Make Size a Range
+    def cuboid(self,x=0,y=0,z=0, size=1.0) -> None: # To Do: Make Size a Range
         # Is Basically Voxel Mesh
         """_summary_
   
@@ -111,33 +111,33 @@ class WorkShape():
         Returns:
             Vertices and Faces
         """
-        for _,x,y,z,size in enumerate(X,Y,Z,Size[0]): # To Do: Make size variable for repeating Values, would probably have to make an HashFunction for x,y,z value
-            base_index = len(self.vertices) + 1
-    
-            # Define vertices
-            v0 = [x, y, z]
-            v1 = [x + size, y, z]
-            v2 = [x, y + size, z]
-            v3 = [x + size, y + size, z]
-            v4 = [x, y, z + size]
-            v5 = [x + size, y, z + size]
-            v6 = [x, y + size, z + size]
-            v7 = [x + size, y + size, z + size]
-    
-            self.vertices.extend([v0, v1, v2, v3, v4, v5, v6, v7])
-    
-            # Add faces
-            self.faces.extend([
-                [base_index + 0, base_index + 1, base_index + 3, base_index + 2],  # Front
-                [base_index + 4, base_index + 5, base_index + 7, base_index + 6],  # Back
-                [base_index + 0, base_index + 1, base_index + 5, base_index + 4],  # Bottom
-                [base_index + 2, base_index + 3, base_index + 7, base_index + 6],  # Top
-                [base_index + 0, base_index + 2, base_index + 6, base_index + 4],  # Left
-                [base_index + 1, base_index + 3, base_index + 7, base_index + 5]   # Right
-            ])
+        #for x, y, z, size in zip(X, Y, Z, Size):  To Do: Make size variable for repeating Values, would probably have to make an HashFunction for x,y,z value
 
-    def voxel_mesh(self,X=0,Y=0,Z=0, size=[1.0]):
-        self.cuboid(X,Y,Z,size)
+        base_index = len(self.vertices) + 1
+        # Define vertices
+        v0 = [x, y, z]
+        v1 = [x + size, y, z]
+        v2 = [x, y + size, z]
+        v3 = [x + size, y + size, z]
+        v4 = [x, y, z + size]
+        v5 = [x + size, y, z + size]
+        v6 = [x, y + size, z + size]
+        v7 = [x + size, y + size, z + size]
+        self.vertices.extend([v0, v1, v2, v3, v4, v5, v6, v7])
+        # Add faces
+        self.faces.extend([
+                [base_index + 0, base_index + 1, base_index + 3, base_index + 2],  #Front
+                [base_index + 4, base_index + 5, base_index + 7, base_index + 6],  #Back
+                [base_index + 0, base_index + 1, base_index + 5, base_index + 4],  #Bottom
+                [base_index + 2, base_index + 3, base_index + 7, base_index + 6],  # Top
+                [base_index + 0, base_index + 2, base_index + 6, base_index + 4],  #Left
+                [base_index + 1, base_index + 3, base_index + 7, base_index + 5]   #Right
+        ])
+
+    def voxel_mesh(self,X=0,Y=0,Z=0, Size=[1.0]):
+        size = Size[0]
+        for x, y, z in zip(X, Y, Z):
+            self.cuboid(x, y, z, size)
 
     def add_bar(self, base_index=0,x=0,y=0, width=1, height=1, depth=1): # type: ignore
 
@@ -270,7 +270,7 @@ class WorkShape():
                 self.edges.append((index1, index2))
 
     @staticmethod
-    def get_midpoints(x): # should be a static method to get the center bc.
+    def get_midpoints(x): # should be a static method to get the center bc .
         """_summary_
         When working with voxel grids, you typically have the grid points located at the corners of the voxels, but for visualization and certain calculations (like rendering), you might want to refer to the center of each voxel. So, you need to calculate the midpoints before passing it to voxel_mesh
         Args:
