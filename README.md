@@ -1,5 +1,5 @@
 # s3dplot (Only a Class not a module)
-For Plotting, kind of more for creating 3D mesh for your matplotlib 3d plots. Use this just like your matplotlib code. Calculate whatever you want like you did in Numpy and pass the values. This is a newbie attempt. Has Docstrings to help in VS Code.
+For Plotting, kind of more for creating 3D mesh for your matplotlib 3d plots. Use this just like your matplotlib code. Calculate whatever you want like you did in Numpy and pass the values. This is a newbie attempt, haven't added plot methods that I haven't done math. Has Docstrings to help in VS Code.
 ## Why :interrobang:
 I once plotted a 3D graph and wanted to export it to use on a 3D software like Blender, but Matplotlib didn't give that option. So I've written a code that kind of works like Matplotlib.
 ## :closed_book: Important Note
@@ -14,6 +14,14 @@ plt.regular_wireframe_plot(X,Y,Z) #Plotting Wireframe plot
 plt.write_obj("wireframe.obj")
 ```
 ## Plot Methods :robot:
+```write_obj``` to save the mesh.
+> write_obj(filename = "Output.obj", normals=False)
+
+```
+Args:
+  filename (str): filename.
+  normals (bool): Calculates the Normals of the face if present. Use cautiously. 
+```
 :green_book: ```voxel_mesh``` to plot a voxel mesh. 
 > plt.voxel_mesh(X=0,Y=0,Z=0, size=[1.0])
 
