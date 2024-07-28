@@ -11,7 +11,7 @@ import axes3d
 X, Y, Z = axes3d.get_test_data(0.05) #get test data
 plt = s3dplot()
 plt.regular_wireframe_plot(X,Y,Z) #Plotting Wireframe plot
-plt.write_obj("wireframe.obj")
+plt.write_obj("wireframe.obj") #save the plot
 ```
 ## Plot Methods :robot:
 :green_book:```write_obj``` to save the mesh.
