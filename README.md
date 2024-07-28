@@ -30,9 +30,9 @@ Args:
 If you didn't notice, since this is a 3d plot, you can see this 3d bar graph via different axes, thus each axis can have a certain value.
 ```
 
-:green_book: ```regular_face_plot``` Surface plot
+:green_book: ```regular_face_plot``` and ```regular_wireframe_plot``` Surface plot
 > plt.regular_face_plot(x=[],y=[],z=[])
-
+> plt.regular_wireframe_plot(x=[],y=[],z=[])
 ```
 Takes an Array of X,Y,Z coordinates to plot surface usually X,Y is a meshgrid and Z is the Z coordinate
 
