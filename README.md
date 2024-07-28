@@ -23,7 +23,7 @@ Args:
   normals (bool): Calculates the Normals of the face if present. Use cautiously. 
 ```
 :green_book: ```voxel_mesh``` to plot a voxel mesh. 
-> plt.voxel_mesh(X=0,Y=0,Z=0, size=[1.0])
+> plt.voxel_mesh(X=[],Y=[],Z=[], size=[1.0])
 
 :green_book: ```bar_mesh``` to plot a bar mesh.
 > plt.bar_mesh(values, width=1, depth=1, space=0)
