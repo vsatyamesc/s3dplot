@@ -269,7 +269,15 @@ class WorkShape():
                 index2 = index1 + n_cols
                 self.edges.append((index1, index2))
 
-    def get_midpoints(self, x):
+    @staticmethod
+    def get_midpoints(x): # should be a static method to get the center bc.
+        """_summary_
+        When working with voxel grids, you typically have the grid points located at the corners of the voxels, but for visualization and certain calculations (like rendering), you might want to refer to the center of each voxel. So, you need to calculate the midpoints before passing it to voxel_mesh
+        Args:
+            x (_type_): _description_
+        Returns:
+            _type_: _description_
+        """
         sl = ()
         for _ in range(x.ndim):
             x = (x[sl + np.index_exp[:-1]] + x[sl + np.index_exp[1:]]) / 2.0
