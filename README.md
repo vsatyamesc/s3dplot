@@ -14,7 +14,7 @@ plt.regular_wireframe_plot(X,Y,Z) #Plotting Wireframe plot
 plt.write_obj("wireframe.obj")
 ```
 ## Plot Methods :robot:
-```write_obj``` to save the mesh.
+:green_book:```write_obj``` to save the mesh.
 > write_obj(filename = "Output.obj", normals=False)
 
 ```
