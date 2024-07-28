@@ -4,7 +4,7 @@ For Plotting, kind of more for creating 3D mesh for your matplotlib 3d plots. Us
 I once plotted a 3D graph and wanted to export it to use on a 3D software like Blender, but Matplotlib didn't give that option. So I've written a code that kind of works like Matplotlib.
 ## :closed_book: Important Note
 This will only export the mesh, it will not add anything extra like legends, texts, colors (will add later), plot numbers, or any texts. You need to do that on your own in the current version.
-## Example Usage :placard:
+## Example Usage :placard: Will add more examples.
 ```
 from .main import s3dplot
 import axes3d
