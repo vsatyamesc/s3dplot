@@ -33,17 +33,17 @@ class PlotUtil():
         normals /= np.linalg.norm(normals, axis=1)[:, np.newaxis]
         self.normals = normals
 
-    @staticmethod
-    def calculate_normals(vertices,faces):
-        normals = np.zeros((len(vertices), 3), dtype=np.float32)
-        for face in faces:
-            v0, v1, v2, _ = [np.array(vertices[idx - 1]) for idx in face]
-            normal = np.cross(v1 - v0, v2 - v0)
-            normal /= np.linalg.norm(normal)
-            for idx in face:
-                normals[idx - 1] += normal
-        normals /= np.linalg.norm(normals, axis=1)[:, np.newaxis]
-        return normals
+    # @staticmethod
+    # def calculate_normals(vertices,faces):
+    #     normals = np.zeros((len(vertices), 3), dtype=np.float32)
+    #     for face in faces:
+    #         v0, v1, v2, _ = [np.array(vertices[idx - 1]) for idx in face]
+    #         normal = np.cross(v1 - v0, v2 - v0)
+    #         normal /= np.linalg.norm(normal)
+    #         for idx in face:
+    #             normals[idx - 1] += normal
+    #     normals /= np.linalg.norm(normals, axis=1)[:, np.newaxis]
+    #     return normals
 
     def write_obj(self, filename = "Output.obj", normals=False):
 
