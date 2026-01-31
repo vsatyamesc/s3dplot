@@ -21,61 +21,91 @@ class PlotUtil():
   
     def calculate_normals(self) -> None:
         """
-        Set Normals
+        Calculates Vertex Normals.
+        Handles Triangles (3 vertices), Quads (4 vertices), and Polygons.
         """
+        # Initialize normals array
         normals = np.zeros((len(self.vertices), 3), dtype=np.float32)
+
         for face in self.faces:
-            v0, v1, v2, _ = [np.array(self.vertices[idx - 1]) for idx in face]
+            # 1. Get all vertices for the current face
+            # We use float64 to prevent the previous 'division' error you saw
+            verts = [np.array(self.vertices[idx - 1], dtype=np.float64) for idx in face]
+
+            # We need at least 3 vertices to define a plane (and thus a normal)
+            if len(verts) < 3:
+                continue
+
+            # 2. Calculate Face Normal
+            # We only need the first 3 vertices to calculate the cross product
+            v0, v1, v2 = verts[0], verts[1], verts[2]
+            
             normal = np.cross(v1 - v0, v2 - v0)
-            normal /= np.linalg.norm(normal)
+            
+            # 3. Normalize the vector
+            norm_val = np.linalg.norm(normal)
+            if norm_val == 0: 
+                continue # Skip degenerate faces (zero area)
+
+            normal /= norm_val
+
+            # 4. Add this normal to ALL vertices belonging to this face
             for idx in face:
                 normals[idx - 1] += normal
-        normals /= np.linalg.norm(normals, axis=1)[:, np.newaxis]
+
+        # 5. Final Normalization of Vertex Normals (Average)
+        # Calculate lengths of the accumulated vectors
+        norms = np.linalg.norm(normals, axis=1)[:, np.newaxis]
+        
+        # Avoid division by zero for isolated vertices
+        norms[norms == 0] = 1.0 
+        
+        normals /= norms
         self.normals = normals
 
-    # @staticmethod
-    # def calculate_normals(vertices,faces):
-    #     normals = np.zeros((len(vertices), 3), dtype=np.float32)
-    #     for face in faces:
-    #         v0, v1, v2, _ = [np.array(vertices[idx - 1]) for idx in face]
-    #         normal = np.cross(v1 - v0, v2 - v0)
-    #         normal /= np.linalg.norm(normal)
-    #         for idx in face:
-    #             normals[idx - 1] += normal
-    #     normals /= np.linalg.norm(normals, axis=1)[:, np.newaxis]
-    #     return normals
-
-    def write_obj(self, filename = "Output.obj", normals=False):
-
+    def write_obj(self, filename="Output.obj", normals=False):
         print(f"Writing to {filename}")
 
         if not filename.endswith(".obj"):
             filename = filename + ".obj"
 
-        if (normals == True) and len(self.normals)==0: # iff Normals are not provided during the object creation then calculate the normals if specified.
-           self.calculate_normals()
+        # Calculate normals if requested but missing
+        if normals and len(self.normals) == 0:
+            self.calculate_normals()
     
         with open(filename, 'w') as f:
-            # Write vertices
+            # 1. Write vertices
             for v in self.vertices:
                 f.write(f'v {v[0]} {v[1]} {v[2]}\n')
             
-            # Write normals if True and Present
-            if len(self.normals) != 0 and (normals==True):
+            # 2. Write normals (if present and requested)
+            has_normals = (len(self.normals) > 0) and normals
+            if has_normals:
                 for n in self.normals:
                     f.write(f'vn {n[0]} {n[1]} {n[2]}\n')
 
-            # Write Edges if present, usually for Wireframes mode else, the face handles the edges
+            # 3. Write Edges (Wireframe lines)
             if len(self.edges) != 0:
                 for edge in self.edges:
+                    # OBJ lines use 1-based indexing
                     f.write(f"l {edge[0] + 1} {edge[1] + 1}\n")
 
-            # Write faces
+            # 4. Write faces (Dynamic Handling)
             for face in self.faces:
-                if (len(self.normals) != 0) and (normals==True):
-                    f.write(f'f {face[0]}//{face[0]} {face[1]}//{face[1]} {face[2]}//{face[2]} {face[3]}//{face[3]}\n')
-                else:
-                    f.write(f'f {face[0]} {face[1]} {face[2]} {face[3]}\n')
+                # We build the string list for the current face
+                face_strings = []
+                
+                for idx in face:
+                    if has_normals:
+                        # Format: vertex_index//normal_index
+                        # (In this simple implementation, vertex_idx == normal_idx)
+                        face_strings.append(f"{idx}//{idx}")
+                    else:
+                        # Format: vertex_index
+                        face_strings.append(f"{idx}")
+                
+                # Join them with spaces and write
+                f.write(f'f {" ".join(face_strings)}\n')
     
     def write_stl(self, filename = "Output.stl"):
         # Occupied for Exporting in STL format
@@ -98,8 +128,138 @@ class WorkShape():
         self.vertices = []
         self.faces = []
         self.edges = []
-  
-    def cuboid(self,x=0,y=0,z=0, size=1.0) -> None: # To Do: Make Size a Range
+
+    def __add__(self, other):
+        """
+        Merges this plot with another plot (Union).
+        Usage: combined_plot = plot1 + plot2
+        """
+        if not isinstance(other, WorkShape):
+            raise TypeError("You can only add two s3dplot/WorkShape objects together.")
+
+        # Create a new instance to hold the result
+        result = s3dplot()
+        
+        # Copy Self Data (Base)
+        result.vertices = list(self.vertices)
+        result.faces = list(self.faces)
+        result.edges = list(self.edges)
+        result.normals = list(self.normals) # If they exist
+
+        # Vertices count is needed to shift indices
+        vert_offset = len(self.vertices)
+
+        # -- Vertices: Just append
+        result.vertices.extend(other.vertices)
+
+        for face in other.faces:
+            shifted_face = [idx + vert_offset for idx in face]
+            result.faces.append(shifted_face)
+
+        for edge in other.edges:
+            shifted_edge = (edge[0] + vert_offset, edge[1] + vert_offset)
+            result.edges.append(shifted_edge)
+            
+        return result
+    
+    def translate(self, x=0, y=0, z=0):
+        """
+        Moves ALL current vertices in the object by the given offset.
+        Useful for moving a shape after you've already defined it.
+        """
+        new_verts = []
+        for v in self.vertices:
+            new_verts.append([v[0] + x, v[1] + y, v[2] + z])
+        self.vertices = new_verts
+
+    def plot(self, x, y, z, offset=(0,0,0)):
+        """
+        Draws a line with a global offset.
+        """
+        start_idx = len(self.vertices) 
+        dx, dy, dz = offset
+        
+        for ix, iy, iz in zip(x, y, z):
+            self.vertices.append([ix + dx, iy + dy, iz + dz])
+            
+        num_points = len(x)
+        for i in range(num_points - 1):
+            idx1 = start_idx + i
+            idx2 = start_idx + i + 1
+            self.edges.append((idx1, idx2))
+    
+    def sphere(self, cx=0, cy=0, cz=0, radius=1.0, rings=12, segments=12):
+        """
+        Generates a UV Sphere.
+        rings: Number of horizontal slices (latitude)
+        segments: Number of vertical slices (longitude)
+        """
+        base_idx = len(self.vertices) + 1  # OBJ is 1-based
+        
+        # 1. Generate Vertices
+        for i in range(rings + 1):
+            phi = np.pi * i / rings
+            for j in range(segments + 1):
+                theta = 2 * np.pi * j / segments
+                
+                x = cx + radius * np.sin(phi) * np.cos(theta)
+                y = cy + radius * np.sin(phi) * np.sin(theta)
+                z = cz + radius * np.cos(phi)
+                self.vertices.append([x, y, z])
+
+        # 2. Generate Faces (Quads)
+        # We loop through the rings and segments to connect the vertices
+        for i in range(rings):
+            for j in range(segments):
+                # Calculate indices of the 4 corners of the quad
+                # Current Row
+                p1 = base_idx + (i * (segments + 1)) + j
+                p2 = p1 + 1
+                # Next Row
+                p3 = base_idx + ((i + 1) * (segments + 1)) + j
+                p4 = p3 + 1
+                
+                # Add face (Counter-Clockwise winding order)
+                self.faces.append([p1, p2, p4, p3])
+
+    def add_cylinder(self, x=0, y=0, z=0, radius=0.5, height=1.0, segments=12):
+        """
+        Creates a cylinder with origin at the bottom center.
+        """
+        base_idx = len(self.vertices) + 1
+        
+        # 1. Generate Bottom Circle Vertices
+        for i in range(segments):
+            theta = 2.0 * np.pi * i / segments
+            vx = x + radius * np.cos(theta)
+            vy = y + radius * np.sin(theta)
+            self.vertices.append([vx, vy, z]) # Bottom ring
+
+        # 2. Generate Top Circle Vertices
+        for i in range(segments):
+            theta = 2.0 * np.pi * i / segments
+            vx = x + radius * np.cos(theta)
+            vy = y + radius * np.sin(theta)
+            self.vertices.append([vx, vy, z + height]) # Top ring
+
+        # 3. Side Faces
+        for i in range(segments):
+            # Bottom vertices are 0 to segments-1
+            # Top vertices are segments to 2*segments-1
+            
+            b1 = base_idx + i
+            b2 = base_idx + (i + 1) % segments # Wrap around to 0
+            
+            t1 = b1 + segments
+            t2 = b2 + segments
+            
+            self.faces.append([b1, b2, t2, t1])
+
+        # 4. Cap Faces (Simple N-gon fan or center point)
+        # For simplicity, we are leaving caps open here, but you can 
+        # add a center vertex and fan triangles if needed.
+        
+    def cuboid(self,x=0,y=0,z=0, size=1.0) -> None: # To Do: Make size a Range
         # Is Basically Voxel Mesh
         """_summary_
   
@@ -111,7 +271,7 @@ class WorkShape():
         Returns:
             Vertices and Faces
         """
-        #for x, y, z, size in zip(X, Y, Z, Size):  To Do: Make size variable for repeating Values, would probably have to make an HashFunction for x,y,z value
+        #for x, y, z, size in zip(X, Y, Z, size):  To Do: Make size variable for repeating Values, would probably have to make an HashFunction for x,y,z value
 
         base_index = len(self.vertices) + 1
         # Define vertices
@@ -134,8 +294,29 @@ class WorkShape():
                 [base_index + 1, base_index + 3, base_index + 7, base_index + 5]   #Right
         ])
 
-    def voxel_mesh(self,X=0,Y=0,Z=0, Size=[1.0]):
-        size = Size[0]
+    def scatter(self, x, y, z, s=1.0, marker='cube', *args, offset=(0,0,0)):
+        """
+        offset: tuple (dx, dy, dz) to shift the entire plot.
+        """
+        if isinstance(x, (int, float)): x, y, z = [x], [y], [z]
+        
+        dx, dy, dz = offset
+        marker_offset = s / 2.0
+        
+        for ix, iy, iz in zip(x, y, z):
+            final_x = ix + dx
+            final_y = iy + dy
+            final_z = iz + dz
+            
+            if marker == 'cube':
+                self.cuboid(final_x - marker_offset, 
+                            final_y - marker_offset, 
+                            final_z - marker_offset, size=s)
+            elif marker == 'sphere':
+                self.sphere(final_x, final_y, final_z, radius=s/2)
+
+    def voxel_mesh(self,X=0,Y=0,Z=0, size=[1.0]):
+        size = size[0]
         for x, y, z in zip(X, Y, Z):
             self.cuboid(x, y, z, size)
 
@@ -163,27 +344,38 @@ class WorkShape():
             [base_index + 2, base_index + 4, base_index + 8, base_index + 6]   # Right
         ])
     
-    def bar_mesh(self,values, width=1, depth=1, space=0):
-        """_summary_
-        Add Bar 3D plot. This is a 3D Plot which means each plot can represent two different relations rather than one per graph unlike the 2D.
-        Args:
-            values (list or int): the values of the categories
-            width (list or int): the width you want to set, if different for each graph pass a list or tuple
-            depth (list or int): the depth you want to set, if different for each graph pass a list of tuple
-            space (list or int): spacing, if different for each graph pass a list of tuple
+    def bar_mesh(self, values, width=1, depth=1, space=0):
         """
-        index = 0
+        Add Bar 3D plot.
+        Args:
+            values (list): The height values of the categories.
+            width (float or list): Width of bars.
+            depth (float or list): Depth (thickness) of bars.
+            space (float or list): Gap between bars.
+        """
         n = len(values)
-        if type(width) is int:
-            width = [width]*n
-        if type(depth) is int:
-            depth = [depth]*n
-        if type(space) is int:
-            space = [space+1]*n
+        index = 0
+        
+        # FIX: Check for both int AND float
+        if isinstance(width, (int, float)):
+            width = [width] * n
+        if isinstance(depth, (int, float)):
+            depth = [depth] * n
+        if isinstance(space, (int, float)):
+            space = [space] * n
+
+        current_x = 0
+        
         for i in range(n):
-            x = i*(width[i]*space[i])
-            y = 0
-            self.add_bar(index, x,y,width[i],values[i],depth[i])
+            # Calculate position based on previous placement
+            # Using current_x ensures bars don't overlap if widths vary
+            self.add_bar(index, current_x, 0, width[i], values[i], depth[i])
+            
+            # Increment X for the next bar
+            # (current width + spacing)
+            current_x += width[i] + space[i]
+            
+            # Each bar adds 8 vertices, so we shift the base index
             index += 8
 
     def clear(self):
@@ -192,28 +384,31 @@ class WorkShape():
         self.normals = []
         self.edges = []
 
-    def regular_face_plot(self,x=None,y=None,z=None): # Surface plot
-        """_summary_  
-        Takes an Array of X,Y,Z coordinates to plot surface
-        usually X,Y is a meshgrid and Z is the Z coordinate
-        Args: 
-            x (_type_, optional): Mesh Grid
-            y (_type_, optional): Mesh Grid
-            z (_type_, optional): 
-        """ 
+    def regular_face_plot(self, x=None, y=None, z=None, offset=(0,0,0)): 
+        """
+        offset: tuple (dx, dy, dz) to shift the whole surface.
+        """
         n_rows, n_cols = x.shape
+        start_v = len(self.vertices) 
+        dx, dy, dz = offset
 
+        # Add Vertices with Offset
         for i in range(n_rows):
-          for j in range(n_cols):
-            self.vertices.append([x[i, j], y[i, j], z[i, j]])
+            for j in range(n_cols):
+                self.vertices.append([
+                    x[i, j] + dx, 
+                    y[i, j] + dy, 
+                    z[i, j] + dz
+                ])
   
+        # Add Faces (Indices logic remains the same)
         for i in range(n_rows - 1):
-          for j in range(n_cols - 1):
-            v0 = i * n_cols + j + 1
-            v1 = v0 + 1
-            v2 = v0 + n_cols
-            v3 = v2 + 1
-            self.faces.append([v0, v1, v3, v2])
+            for j in range(n_cols - 1):
+                v0 = start_v + i * n_cols + j + 1
+                v1 = v0 + 1
+                v2 = v0 + n_cols
+                v3 = v2 + 1
+                self.faces.append([v0, v1, v3, v2])
             
     def surface_plot(self,x=None,y=None,z=None):
         print("You could've literally used regular_face_plot bruh")
@@ -269,6 +464,112 @@ class WorkShape():
                 index2 = index1 + n_cols
                 self.edges.append((index1, index2))
 
+    def fill_between(self, x1, y1, z1, *args,x2=None, y2=None, z2=None, offset=(0,0,0)):
+        """
+        Creates a surface connecting two arbitrary 3D curves.
+        
+        Args:
+            x1, y1, z1: Coordinates of the first curve.
+            x2, y2, z2: Coordinates of the second curve. 
+                        - If x2 is None, it defaults to x1 (vertical fill).
+                        - If y2 is None, it defaults to y1.
+                        - If z2 is None, it defaults to 0 (floor fill).
+            offset: (dx, dy, dz) Global shift for the entire shape.
+        """
+        n = len(x1)
+        dx, dy, dz = offset
+
+        # --- Handle Defaults for Curve 2 ---
+        
+        # If x2 is missing, assume it shares x1 (vertical/depth alignment)
+        if x2 is None: x2 = x1
+        
+        # If y2 is missing, assume it shares y1
+        if y2 is None: y2 = y1
+        
+        # If z2 is missing, assume it fills down to 0
+        if z2 is None: 
+            z2 = [0] * n
+        elif isinstance(z2, (int, float)): 
+            z2 = [z2] * n
+
+        # Check for length mismatch
+        if len(x2) != n:
+            print(f"Warning: Curve 1 has {n} points but Curve 2 has {len(x2)}. Truncating to match.")
+            n = min(n, len(x2))
+
+        # --- 1. Add Vertices ---
+        base_idx = len(self.vertices) + 1
+        
+        # Curve 1 vertices
+        for i in range(n):
+            self.vertices.append([x1[i]+dx, y1[i]+dy, z1[i]+dz])
+            
+        # Curve 2 vertices
+        for i in range(n):
+            self.vertices.append([x2[i]+dx, y2[i]+dy, z2[i]+dz])
+
+        # --- 2. Create Faces ---
+        # Connect i -> i (parallel/corresponding points)
+        for i in range(n - 1):
+            top_curr = base_idx + i
+            top_next = base_idx + i + 1
+            bot_curr = base_idx + n + i
+            bot_next = base_idx + n + i + 1
+            
+            self.faces.append([top_curr, bot_curr, bot_next, top_next])
+    
+    def quiver(self, x, y, z, u, v, w, length=1.0, arrow_length_ratio=0.3, offset=(0,0,0)):
+        if isinstance(x, (int, float)): 
+            x,y,z = [x],[y],[z]
+            u,v,w = [u],[v],[w]
+
+        dx, dy, dz = offset
+
+        for i in range(len(x)):
+            # Apply offset to the starting position
+            start = np.array([x[i] + dx, y[i] + dy, z[i] + dz])
+            
+            # Direction calculation remains the same
+            direction = np.array([u[i], v[i], w[i]])
+            norm = np.linalg.norm(direction)
+            if norm == 0: continue
+            
+            direction = direction / norm 
+            end = start + (direction * length)
+            
+            # Shaft
+            self.vertices.append(start.tolist())
+            self.vertices.append(end.tolist())
+            self.edges.append((len(self.vertices)-2, len(self.vertices)-1))
+
+            # Head
+            head_size = length * arrow_length_ratio
+            base_center = end - (direction * head_size)
+            
+            if abs(direction[2]) < 0.9: perp = np.cross(direction, [0,0,1])
+            else: perp = np.cross(direction, [0,1,0])
+            perp = perp / np.linalg.norm(perp)
+            perp2 = np.cross(direction, perp)
+            
+            w_head = head_size * 0.4
+            
+            # Head Vertices
+            v_tip = end
+            v_b1 = base_center + perp * w_head
+            v_b2 = base_center - perp * w_head
+            v_b3 = base_center + perp2 * w_head
+            v_b4 = base_center - perp2 * w_head
+            
+            b_idx = len(self.vertices) + 1
+            self.vertices.extend([v_tip.tolist(), v_b1.tolist(), v_b2.tolist(), v_b3.tolist(), v_b4.tolist()])
+            
+            # Head Faces
+            self.faces.extend([
+                [b_idx, b_idx+1, b_idx+3], [b_idx, b_idx+3, b_idx+2],
+                [b_idx, b_idx+2, b_idx+4], [b_idx, b_idx+4, b_idx+1],
+                [b_idx+1, b_idx+4, b_idx+2, b_idx+3] 
+            ])
     @staticmethod
     def get_midpoints(x): # should be a static method to get the center bc .
         """_summary_
