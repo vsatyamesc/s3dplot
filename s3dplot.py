@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 
 class PlotUtil():
@@ -596,3 +597,5 @@ class WorkShape():
       
 class s3dplot(WorkShape,PlotUtil):
    pass
+
+sys.modules[__name__] = s3dplot
