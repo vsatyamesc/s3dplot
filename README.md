@@ -1,3 +1,4 @@
+# This Readme is Outdated, Refer /examples
 # s3dplot (Only a Class not a module)
 For Plotting, kind of more for creating 3D mesh for your matplotlib 3d plots. Use this just like your matplotlib code. Calculate whatever you want like you did in Numpy and pass the values. This is a newbie attempt, haven't added plot methods that I haven't done math. Has Docstrings to help in VS Code.
 ## Why :interrobang:
